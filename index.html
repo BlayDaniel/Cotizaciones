@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Cotizaciones</title>
+<style>
+  :root{
+    --primary:#1a3c6e;
+    --primary-dark:#0f2647;
+    --accent:#c9a13b;
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --border:#dbe1ea;
+    --text:#22314a;
+    --muted:#6b7a90;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:16px;
+  }
+  .container{
+    max-width:850px;
+    margin:0 auto;
+  }
+  h1{
+    text-align:center;
+    color:var(--primary-dark);
+    font-size:1.4rem;
+    margin-bottom:4px;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--muted);
+    font-size:0.85rem;
+    margin-bottom:20px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:18px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card h2{
+    font-size:1rem;
+    color:var(--primary);
+    margin:0 0 14px 0;
+    border-bottom:2px solid var(--border);
+    padding-bottom:8px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .locked-tag{
+    font-size:0.7rem;
+    font-weight:600;
+    color:var(--muted);
+    background:#eceff3;
+    padding:2px 8px;
+    border-radius:12px;
+    border-bottom:none;
+  }
+  input[readonly]{
+    background:#f0f2f6;
+    color:var(--text);
+    cursor:not-allowed;
+  }
+  label{
+    display:block;
+    font-size:0.78rem;
+    color:var(--muted);
+    margin-bottom:4px;
+    font-weight:600;
+  }
+  input[type="text"], input[type="number"], textarea{
+    width:100%;
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:0.95rem;
+    margin-bottom:12px;
+    font-family:inherit;
+    background:#fff;
+    color:var(--text);
+  }
+  input:focus, textarea:focus{
+    outline:none;
+    border-color:var(--primary);
+  }
+  .grid2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 14px;
+  }
+  .item-row{
+    display:grid;
+    grid-template-columns:1fr 130px 34px;
+    gap:8px;
+    align-items:start;
+  }
+  .item-row input[type="text"]{margin-bottom:8px;}
+  .item-row input[type="number"]{margin-bottom:8px; text-align:right;}
+  .del-btn{
+    background:#e8546a;
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    width:34px;
+    height:38px;
+    font-size:1rem;
+    cursor:pointer;
+    line-height:1;
+  }
+  .del-btn:hover{background:#c93c52;}
+  .subtotal-line{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    font-weight:600;
+    color:var(--primary-dark);
+    padding-top:6px;
+    border-top:1px dashed var(--border);
+    margin-top:4px;
+    font-size:0.9rem;
+  }
+  .total-box{
+    background:var(--primary-dark);
+    color:#fff;
+    border-radius:10px;
+    padding:16px 18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .total-box .label{font-size:0.95rem;}
+  .total-box .amount{font-size:1.4rem; font-weight:700; color:var(--accent);}
+  .btn-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:30px;
+    flex-wrap:wrap;
+  }
+  button.action{
+    flex:1;
+    min-width:150px;
+    padding:13px;
+    border:none;
+    border-radius:8px;
+    font-size:0.95rem;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-print{background:var(--primary); color:#fff;}
+  .btn-print:hover{background:var(--primary-dark);}
+  .btn-clear{background:#eceff3; color:var(--text);}
+  .btn-clear:hover{background:#dde2e9;}
+
+  /* --- Documento imprimible --- */
+  #printArea{display:none;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{display:block; position:absolute; top:0; left:0; width:100%; padding:0; margin:0;}
+    body{padding:0; background:#fff;}
+    .no-print{display:none !important;}
+  }
+
+  .doc-header{
+    text-align:center;
+    border-bottom:3px solid var(--primary-dark);
+    padding-bottom:10px;
+    margin-bottom:16px;
+  }
+  .doc-header .biz-name{font-size:1.5rem; font-weight:700; color:var(--primary-dark);}
+  .doc-header .biz-tag{font-size:0.85rem; color:var(--muted); margin:2px 0;}
+  .doc-header .biz-info{font-size:0.78rem; color:var(--muted);}
+  .doc-title{
+    text-align:center;
+    background:var(--primary-dark);
+    color:#fff;
+    padding:6px;
+    border-radius:6px;
+    font-weight:700;
+    letter-spacing:1px;
+    margin:14px 0;
+  }
+  .doc-meta{font-size:0.9rem; margin-bottom:14px;}
+  .doc-meta b{color:var(--primary-dark);}
+  table.doc-table{
+    width:100%;
+    border-collapse:collapse;
+    margin-bottom:10px;
+    font-size:0.88rem;
+  }
+  table.doc-table th{
+    background:#eef2f8;
+    text-align:left;
+    padding:6px 8px;
+    border:1px solid var(--border);
+    color:var(--primary-dark);
+  }
+  table.doc-table td{
+    padding:6px 8px;
+    border:1px solid var(--border);
+  }
+  table.doc-table td.price{text-align:right;}
+  .doc-section-title{
+    font-weight:700;
+    color:var(--primary-dark);
+    margin:16px 0 6px 0;
+    font-size:0.95rem;
+  }
+  .doc-subtotal{
+    text-align:right;
+    font-size:0.88rem;
+    padding:4px 8px;
+    font-weight:600;
+  }
+  .doc-total{
+    text-align:right;
+    font-size:1.1rem;
+    font-weight:700;
+    color:var(--primary-dark);
+    border-top:2px solid var(--primary-dark);
+    padding-top:8px;
+    margin-top:10px;
+  }
+  .doc-footer{
+    margin-top:50px;
+    text-align:center;
+    font-size:0.9rem;
+  }
+  .doc-footer .line{
+    border-top:1px solid #000;
+    width:220px;
+    margin:40px auto 4px auto;
+  }
+
+  @media (max-width:520px){
+    .grid2{grid-template-columns:1fr;}
+    .item-row{grid-template-columns:1fr 90px 34px;}
+    .total-box .amount{font-size:1.2rem;}
+  }
+</style>
+</head>
+<body>
+
+<div class="container no-print">
+  <h1>Generador de Cotizaciones</h1>
+  <div class="subtitle">Completa los campos y genera tu PDF</div>
+
+  <div class="card">
+    <h2>Datos del negocio <span class="locked-tag">🔒 Fijo</span></h2>
+    <div class="grid2">
+      <div>
+        <label>Nombre del negocio</label>
+        <input type="text" id="bizName" readonly>
+      </div>
+      <div>
+        <label>Eslogan / Actividad</label>
+        <input type="text" id="bizTag" readonly>
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <label>Dirección</label>
+        <input type="text" id="bizAddress" readonly>
+      </div>
+      <div>
+        <label>Teléfono</label>
+        <input type="text" id="bizPhone" readonly>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Datos de la cotización</h2>
+    <div class="grid2">
+      <div>
+        <label>Cliente</label>
+        <input type="text" id="clientName" placeholder="Nombre del cliente">
+      </div>
+      <div>
+        <label>Vehículo / Referencia</label>
+        <input type="text" id="vehicleInfo" placeholder="Ej: Kia Lotze 2015">
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <label>Fecha</label>
+        <input type="text" id="quoteDate" placeholder="Ej: 03/07/2026">
+      </div>
+      <div>
+        <label>No. de cotización (opcional)</label>
+        <input type="text" id="quoteNumber" placeholder="Ej: 0001">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Trabajos a realizar</h2>
+    <div id="workItems"></div>
+    <div class="subtotal-line">Subtotal trabajos: RD$ <span id="workSubtotal">0.00</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Piezas</h2>
+    <div id="partItems"></div>
+    <div class="subtotal-line">Subtotal piezas: RD$ <span id="partSubtotal">0.00</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Firma / Responsable <span class="locked-tag">🔒 Fijo</span></h2>
+    <label>Nombre de quien cotiza</label>
+    <input type="text" id="ownerName" readonly>
+    <label>Cargo</label>
+    <input type="text" id="ownerRole" readonly>
+  </div>
+
+  <div class="total-box">
+    <span class="label">TOTAL GENERAL</span>
+    <span class="amount">RD$ <span id="grandTotal">0.00</span></span>
+  </div>
+
+  <div class="btn-row">
+    <button class="action btn-print" onclick="generarPDF()">🖨️ Generar / Imprimir PDF</button>
+    <button class="action btn-clear" onclick="limpiarTodo()">🗑️ Limpiar todo</button>
+  </div>
+</div>
+
+<!-- Área imprimible -->
+<div id="printArea">
+  <div class="doc-header">
+    <div class="biz-name" id="p-bizName"></div>
+    <div class="biz-tag" id="p-bizTag"></div>
+    <div class="biz-info" id="p-bizAddress"></div>
+    <div class="biz-info" id="p-bizPhone"></div>
+  </div>
+
+  <div class="doc-title">COTIZACIÓN <span id="p-quoteNumber"></span></div>
+
+  <div class="doc-meta">
+    <div><b>Cliente:</b> <span id="p-clientName"></span></div>
+    <div><b>Vehículo/Referencia:</b> <span id="p-vehicleInfo"></span></div>
+    <div><b>Fecha:</b> <span id="p-quoteDate"></span></div>
+  </div>
+
+  <div id="p-workSection">
+    <div class="doc-section-title">Trabajos a realizar</div>
+    <table class="doc-table">
+      <thead><tr><th>Descripción</th><th style="width:110px;">Precio</th></tr></thead>
+      <tbody id="p-workTable"></tbody>
+    </table>
+    <div class="doc-subtotal">Subtotal: RD$ <span id="p-workSubtotal"></span></div>
+  </div>
+
+  <div id="p-partSection">
+    <div class="doc-section-title">Piezas</div>
+    <table class="doc-table">
+      <thead><tr><th>Descripción</th><th style="width:110px;">Precio</th></tr></thead>
+      <tbody id="p-partTable"></tbody>
+    </table>
+    <div class="doc-subtotal">Subtotal: RD$ <span id="p-partSubtotal"></span></div>
+  </div>
+
+  <div class="doc-total">TOTAL GENERAL: RD$ <span id="p-grandTotal"></span></div>
+
+  <div class="doc-footer">
+    <div class="line"></div>
+    <div id="p-ownerName"></div>
+    <div id="p-ownerRole"></div>
+  </div>
+</div>
+
+<script>
+function crearFila(containerId, tipo){
+  const container = document.getElementById(containerId);
+  const row = document.createElement('div');
+  row.className = 'item-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Descripción" class="desc-input">
+    <input type="number" placeholder="Precio" class="price-input" step="0.01">
+    <button class="del-btn" title="Eliminar">✕</button>
+  `;
+  container.appendChild(row);
+
+  const descInput = row.querySelector('.desc-input');
+  const priceInput = row.querySelector('.price-input');
+  const delBtn = row.querySelector('.del-btn');
+
+  function checkAutoAdd(){
+    const rows = container.querySelectorAll('.item-row');
+    const isLast = row === rows[rows.length-1];
+    if(isLast && descInput.value.trim() !== '' && priceInput.value.trim() !== ''){
+      crearFila(containerId, tipo);
+    }
+    calcularTotales();
+  }
+
+  descInput.addEventListener('input', checkAutoAdd);
+  priceInput.addEventListener('input', checkAutoAdd);
+  delBtn.addEventListener('click', () => {
+    row.remove();
+    if(container.querySelectorAll('.item-row').length === 0){
+      crearFila(containerId, tipo);
+    }
+    calcularTotales();
+  });
+}
+
+function calcularTotales(){
+  let workTotal = 0;
+  document.querySelectorAll('#workItems .item-row').forEach(row=>{
+    const p = parseFloat(row.querySelector('.price-input').value) || 0;
+    workTotal += p;
+  });
+  let partTotal = 0;
+  document.querySelectorAll('#partItems .item-row').forEach(row=>{
+    const p = parseFloat(row.querySelector('.price-input').value) || 0;
+    partTotal += p;
+  });
+  document.getElementById('workSubtotal').textContent = workTotal.toFixed(2);
+  document.getElementById('partSubtotal').textContent = partTotal.toFixed(2);
+  document.getElementById('grandTotal').textContent = (workTotal+partTotal).toFixed(2);
+}
+
+function fmt(v){
+  return (parseFloat(v)||0).toLocaleString('es-DO', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function generarPDF(){
+  // Datos del negocio
+  document.getElementById('p-bizName').textContent = document.getElementById('bizName').value || 'Nombre del Negocio';
+  document.getElementById('p-bizTag').textContent = document.getElementById('bizTag').value;
+  document.getElementById('p-bizAddress').textContent = document.getElementById('bizAddress').value;
+  document.getElementById('p-bizPhone').textContent = document.getElementById('bizPhone').value ? 'Tel: ' + document.getElementById('bizPhone').value : '';
+
+  document.getElementById('p-quoteNumber').textContent = document.getElementById('quoteNumber').value ? '#' + document.getElementById('quoteNumber').value : '';
+  document.getElementById('p-clientName').textContent = document.getElementById('clientName').value;
+  document.getElementById('p-vehicleInfo').textContent = document.getElementById('vehicleInfo').value;
+  document.getElementById('p-quoteDate').textContent = document.getElementById('quoteDate').value;
+
+  // Trabajos
+  const workBody = document.getElementById('p-workTable');
+  workBody.innerHTML = '';
+  let workTotal = 0;
+  let anyWork = false;
+  document.querySelectorAll('#workItems .item-row').forEach(row=>{
+    const desc = row.querySelector('.desc-input').value.trim();
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    if(desc !== ''){
+      anyWork = true;
+      workTotal += price;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${desc}</td><td class="price">RD$ ${fmt(price)}</td>`;
+      workBody.appendChild(tr);
+    }
+  });
+  document.getElementById('p-workSection').style.display = anyWork ? 'block' : 'none';
+  document.getElementById('p-workSubtotal').textContent = fmt(workTotal);
+
+  // Piezas
+  const partBody = document.getElementById('p-partTable');
+  partBody.innerHTML = '';
+  let partTotal = 0;
+  let anyPart = false;
+  document.querySelectorAll('#partItems .item-row').forEach(row=>{
+    const desc = row.querySelector('.desc-input').value.trim();
+    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+    if(desc !== ''){
+      anyPart = true;
+      partTotal += price;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${desc}</td><td class="price">RD$ ${fmt(price)}</td>`;
+      partBody.appendChild(tr);
+    }
+  });
+  document.getElementById('p-partSection').style.display = anyPart ? 'block' : 'none';
+  document.getElementById('p-partSubtotal').textContent = fmt(partTotal);
+
+  document.getElementById('p-grandTotal').textContent = fmt(workTotal + partTotal);
+
+  document.getElementById('p-ownerName').textContent = document.getElementById('ownerName').value;
+  document.getElementById('p-ownerRole').textContent = document.getElementById('ownerRole').value;
+
+  window.print();
+}
+
+function limpiarTodo(){
+  if(!confirm('¿Seguro que deseas limpiar todos los campos? (Los datos del negocio y la firma no se borrarán)')) return;
+  document.querySelectorAll('input[type="text"]:not([readonly]), input[type="number"]:not([readonly])').forEach(i => i.value = '');
+  document.getElementById('workItems').innerHTML = '';
+  document.getElementById('partItems').innerHTML = '';
+  crearFila('workItems', 'trabajo');
+  crearFila('partItems', 'pieza');
+  calcularTotales();
+  const hoy = new Date();
+  document.getElementById('quoteDate').value = hoy.toLocaleDateString('es-DO');
+}
+
+// ==== Datos fijos del negocio (no editables) ====
+document.getElementById('bizName').value = 'Almonte Auto Pintura';
+document.getElementById('bizTag').value = 'Desabolladura y Pintura / Reparación e Instalación de Aire Acondicionado';
+document.getElementById('bizAddress').value = 'Carretera La Isabela #5, Pantoja, Sto. Dgo. Oeste';
+document.getElementById('bizPhone').value = '829-250-2225';
+document.getElementById('ownerName').value = 'Simón Almonte';
+document.getElementById('ownerRole').value = 'Propietario';
+
+// Inicializar
+crearFila('workItems', 'trabajo');
+crearFila('partItems', 'pieza');
+
+// Fecha por defecto
+const hoy = new Date();
+document.getElementById('quoteDate').value = hoy.toLocaleDateString('es-DO');
+</script>
+
+</body>
+</html>
