@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Cotizaciones</title>
+<title>Generador de Cotizaciones - Almonte Auto Pintura</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --primary:#1a3c6e;
@@ -15,7 +16,9 @@
     --text:#22314a;
     --muted:#6b7a90;
   }
+
   *{box-sizing:border-box;}
+
   body{
     margin:0;
     font-family:'Segoe UI', Arial, sans-serif;
@@ -23,22 +26,26 @@
     color:var(--text);
     padding:16px;
   }
+
   .container{
     max-width:850px;
     margin:0 auto;
   }
+
   h1{
     text-align:center;
     color:var(--primary-dark);
     font-size:1.4rem;
-    margin-bottom:4px;
+    margin:0 0 4px 0;
   }
+
   .subtitle{
     text-align:center;
     color:var(--muted);
     font-size:0.85rem;
     margin-bottom:20px;
   }
+
   .card{
     background:var(--card);
     border:1px solid var(--border);
@@ -47,6 +54,7 @@
     margin-bottom:18px;
     box-shadow:0 1px 3px rgba(0,0,0,0.05);
   }
+
   .card h2{
     font-size:1rem;
     color:var(--primary);
@@ -57,6 +65,7 @@
     align-items:center;
     gap:8px;
   }
+
   .locked-tag{
     font-size:0.7rem;
     font-weight:600;
@@ -66,11 +75,13 @@
     border-radius:12px;
     border-bottom:none;
   }
+
   input[readonly]{
     background:#f0f2f6;
     color:var(--text);
     cursor:not-allowed;
   }
+
   label{
     display:block;
     font-size:0.78rem;
@@ -78,6 +89,7 @@
     margin-bottom:4px;
     font-weight:600;
   }
+
   input[type="text"], input[type="number"], textarea{
     width:100%;
     padding:9px 10px;
@@ -89,23 +101,28 @@
     background:#fff;
     color:var(--text);
   }
+
   input:focus, textarea:focus{
     outline:none;
     border-color:var(--primary);
   }
+
   .grid2{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:0 14px;
   }
+
   .item-row{
     display:grid;
     grid-template-columns:1fr 130px 34px;
     gap:8px;
     align-items:start;
   }
+
   .item-row input[type="text"]{margin-bottom:8px;}
-  .item-row input[type="number"]{margin-bottom:8px; text-align:right;}
+  .item-row input[type="number"]{margin-bottom:8px;text-align:right;}
+
   .del-btn{
     background:#e8546a;
     color:#fff;
@@ -117,7 +134,9 @@
     cursor:pointer;
     line-height:1;
   }
+
   .del-btn:hover{background:#c93c52;}
+
   .subtotal-line{
     display:flex;
     justify-content:flex-end;
@@ -129,6 +148,7 @@
     margin-top:4px;
     font-size:0.9rem;
   }
+
   .total-box{
     background:var(--primary-dark);
     color:#fff;
@@ -139,14 +159,17 @@
     align-items:center;
     margin-bottom:18px;
   }
+
   .total-box .label{font-size:0.95rem;}
-  .total-box .amount{font-size:1.4rem; font-weight:700; color:var(--accent);}
+  .total-box .amount{font-size:1.4rem;font-weight:700;color:var(--accent);}
+
   .btn-row{
     display:flex;
     gap:10px;
     margin-bottom:30px;
     flex-wrap:wrap;
   }
+
   button.action{
     flex:1;
     min-width:150px;
@@ -157,91 +180,264 @@
     font-weight:600;
     cursor:pointer;
   }
-  .btn-print{background:var(--primary); color:#fff;}
+
+  button.action:disabled{
+    opacity:.65;
+    cursor:not-allowed;
+  }
+
+  .btn-print{background:var(--primary);color:#fff;}
   .btn-print:hover{background:var(--primary-dark);}
-  .btn-clear{background:#eceff3; color:var(--text);}
+  .btn-browser-print{background:#34495e;color:#fff;}
+  .btn-browser-print:hover{background:#253646;}
+  .btn-clear{background:#eceff3;color:var(--text);}
   .btn-clear:hover{background:#dde2e9;}
 
-  /* --- Documento imprimible --- */
-  #printArea{display:none;}
+  /* ================= Documento imprimible =================
+     Importante: NO se usa display:none en #printArea.
+     html2canvas/html2pdf puede generar páginas en blanco si el nodo origen
+     está oculto con display:none. Se mantiene fuera de pantalla y se muestra
+     solo mientras se genera/imprime.
+  */
+  #printArea{
+    position:fixed;
+    left:-12000px;
+    top:0;
+    z-index:-1;
+    opacity:0;
+    pointer-events:none;
+    width:816px;
+    min-height:1056px;
+    padding:145px 114px 70px 114px;
+    background:#fff;
+    color:#000;
+    font-family:Arial, Helvetica, sans-serif;
+    line-height:1.16;
+  }
 
-  @media print{
-    body *{visibility:hidden;}
-    #printArea, #printArea *{visibility:visible;}
-    #printArea{display:block; position:absolute; top:0; left:0; width:100%; padding:0; margin:0;}
-    body{padding:0; background:#fff;}
-    .no-print{display:none !important;}
+  body.generating-pdf{
+    background:#fff;
+    padding:0;
+  }
+
+  body.generating-pdf .container{
+    display:none !important;
+  }
+
+  body.generating-pdf #printArea{
+    position:absolute;
+    left:0;
+    top:0;
+    z-index:9999;
+    opacity:1;
+    pointer-events:auto;
   }
 
   .doc-header{
     text-align:center;
-    border-bottom:3px solid var(--primary-dark);
-    padding-bottom:10px;
-    margin-bottom:16px;
+    margin-bottom:43px;
   }
-  .doc-header .biz-name{font-size:1.5rem; font-weight:700; color:var(--primary-dark);}
-  .doc-header .biz-tag{font-size:0.85rem; color:var(--muted); margin:2px 0;}
-  .doc-header .biz-info{font-size:0.78rem; color:var(--muted);}
+
+  .doc-header .biz-name{
+    font-family:'Stencil', 'Arial Black', Impact, sans-serif;
+    font-size:42px;
+    font-weight:900;
+    letter-spacing:2px;
+    line-height:1;
+    margin-bottom:8px;
+    text-transform:uppercase;
+  }
+
+  .doc-header .biz-main-tag{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:25px;
+    font-weight:700;
+    line-height:1.05;
+    text-transform:uppercase;
+  }
+
+  .doc-header .biz-tag{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:19px;
+    font-weight:700;
+    line-height:1.1;
+    text-transform:uppercase;
+  }
+
+  .doc-header .biz-info{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:18px;
+    font-weight:700;
+    line-height:1.1;
+    text-transform:uppercase;
+  }
+
   .doc-title{
     text-align:center;
-    background:var(--primary-dark);
-    color:#fff;
-    padding:6px;
-    border-radius:6px;
     font-weight:700;
-    letter-spacing:1px;
-    margin:14px 0;
+    font-size:23px;
+    letter-spacing:.3px;
+    text-decoration:underline;
+    margin:0 0 24px 0;
+    text-transform:uppercase;
   }
-  .doc-meta{font-size:0.9rem; margin-bottom:14px;}
-  .doc-meta b{color:var(--primary-dark);}
-  table.doc-table{
+
+  .doc-meta{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:22px;
+    margin-bottom:22px;
+  }
+
+  .doc-meta div{
+    margin-bottom:20px;
+  }
+
+  .doc-meta b{
+    font-weight:400;
+  }
+
+  .doc-meta span{
+    text-decoration:underline;
+  }
+
+  .doc-job-title{
+    font-size:19px;
+    font-weight:700;
+    margin:4px 0 35px 0;
+    text-transform:uppercase;
+  }
+
+  .doc-list{
+    font-size:20px;
+    margin:0 0 25px 0;
+    padding:0;
+  }
+
+  .doc-list-row,
+  .doc-total-row{
+    display:flex;
+    align-items:baseline;
     width:100%;
-    border-collapse:collapse;
-    margin-bottom:10px;
-    font-size:0.88rem;
+    margin-bottom:8px;
+    color:#000;
   }
-  table.doc-table th{
-    background:#eef2f8;
-    text-align:left;
-    padding:6px 8px;
-    border:1px solid var(--border);
-    color:var(--primary-dark);
+
+  .doc-list-row .num{
+    flex:0 0 36px;
+    text-align:right;
+    margin-right:14px;
   }
-  table.doc-table td{
-    padding:6px 8px;
-    border:1px solid var(--border);
+
+  .doc-list-row .desc{
+    flex:0 1 auto;
+    min-width:0;
+    overflow-wrap:anywhere;
   }
-  table.doc-table td.price{text-align:right;}
+
+  .doc-list-row .dots,
+  .doc-total-row .dots{
+    flex:1 1 auto;
+    border-bottom:3px dotted #000;
+    margin:0 9px 3px 9px;
+    min-width:18px;
+    height:0;
+  }
+
+  .doc-list-row .price{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+
+  .doc-total-row{
+    font-size:20px;
+    font-weight:700;
+    margin:30px 0 34px 0;
+  }
+
+  .doc-total-row .label{
+    flex:0 0 auto;
+  }
+
+  .doc-total-row .price{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+
   .doc-section-title{
+    font-size:20px;
     font-weight:700;
-    color:var(--primary-dark);
-    margin:16px 0 6px 0;
-    font-size:0.95rem;
+    margin:0 0 7px 0;
   }
-  .doc-subtotal{
-    text-align:right;
-    font-size:0.88rem;
-    padding:4px 8px;
-    font-weight:600;
+
+  #p-grandTotalLine{
+    margin-top:6px;
   }
-  .doc-total{
-    text-align:right;
-    font-size:1.1rem;
-    font-weight:700;
-    color:var(--primary-dark);
-    border-top:2px solid var(--primary-dark);
-    padding-top:8px;
-    margin-top:10px;
-  }
+
   .doc-footer{
-    margin-top:50px;
+    margin-top:70px;
+    width:260px;
+    margin-left:auto;
+    margin-right:22px;
     text-align:center;
-    font-size:0.9rem;
+    color:#000;
   }
-  .doc-footer .line{
-    border-top:1px solid #000;
-    width:220px;
-    margin:40px auto 4px auto;
+
+  .doc-footer .owner{
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:24px;
+    font-weight:400;
+    text-transform:uppercase;
+    margin-bottom:4px;
+  }
+
+  .doc-footer .role{
+    font-family:Georgia, 'Times New Roman', serif;
+    font-size:16px;
+    font-weight:400;
+    text-transform:uppercase;
+  }
+
+  @page{
+    size:letter;
+    margin:0;
+  }
+
+  @media print{
+    html, body{
+      width:100%;
+      min-height:100%;
+      margin:0 !important;
+      padding:0 !important;
+      background:#fff !important;
+    }
+
+    body *{
+      visibility:hidden !important;
+    }
+
+    #printArea,
+    #printArea *{
+      visibility:visible !important;
+    }
+
+    #printArea{
+      position:absolute !important;
+      left:0 !important;
+      top:0 !important;
+      z-index:9999 !important;
+      opacity:1 !important;
+      pointer-events:auto !important;
+      width:100% !important;
+      min-height:100vh !important;
+      padding:145px 114px 70px 114px !important;
+      background:#fff !important;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+
+    .no-print{
+      display:none !important;
+    }
   }
 
   @media (max-width:520px){
@@ -255,30 +451,32 @@
 
 <div class="container no-print">
   <h1>Generador de Cotizaciones</h1>
-  <div class="subtitle">Completa los campos y genera tu PDF</div>
+  <div class="subtitle">Completa los campos y genera el documento</div>
 
   <div class="card">
-    <h2>Datos del negocio <span class="locked-tag">🔒 Fijo</span></h2>
+    <h2>Datos del negocio <span class="locked-tag">Fijo</span></h2>
     <div class="grid2">
       <div>
         <label>Nombre del negocio</label>
         <input type="text" id="bizName" readonly>
       </div>
       <div>
-        <label>Eslogan / Actividad</label>
-        <input type="text" id="bizTag" readonly>
+        <label>Actividad principal</label>
+        <input type="text" id="bizMainTag" readonly>
       </div>
     </div>
     <div class="grid2">
       <div>
-        <label>Dirección</label>
-        <input type="text" id="bizAddress" readonly>
+        <label>Actividad secundaria</label>
+        <input type="text" id="bizTag" readonly>
       </div>
       <div>
         <label>Teléfono</label>
         <input type="text" id="bizPhone" readonly>
       </div>
     </div>
+    <label>Dirección</label>
+    <input type="text" id="bizAddress" readonly>
   </div>
 
   <div class="card">
@@ -295,12 +493,22 @@
     </div>
     <div class="grid2">
       <div>
-        <label>Fecha</label>
+        <label>Fecha (opcional, solo se imprime si se llena)</label>
         <input type="text" id="quoteDate" placeholder="Ej: 03/07/2026">
       </div>
       <div>
-        <label>No. de cotización (opcional)</label>
+        <label>No. de documento (opcional)</label>
         <input type="text" id="quoteNumber" placeholder="Ej: 0001">
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <label>Tipo de documento</label>
+        <input type="text" id="quoteTitle" value="COTIZACIÓN" placeholder="Ej: COTIZACIÓN, FACTURA...">
+      </div>
+      <div>
+        <label>Descripción del trabajo</label>
+        <input type="text" id="jobTitle" placeholder="Ej: CAMBIO, CUADRE Y PINTURA DE PIEZAS">
       </div>
     </div>
   </div>
@@ -318,7 +526,7 @@
   </div>
 
   <div class="card">
-    <h2>Firma / Responsable <span class="locked-tag">🔒 Fijo</span></h2>
+    <h2>Firma / Responsable <span class="locked-tag">Fijo</span></h2>
     <label>Nombre de quien cotiza</label>
     <input type="text" id="ownerName" readonly>
     <label>Cargo</label>
@@ -331,64 +539,123 @@
   </div>
 
   <div class="btn-row">
-    <button class="action btn-print" onclick="generarPDF()">🖨️ Generar / Imprimir PDF</button>
-    <button class="action btn-clear" onclick="limpiarTodo()">🗑️ Limpiar todo</button>
+    <button type="button" class="action btn-print" onclick="generarPDF()">Descargar PDF</button>
+    <button type="button" class="action btn-browser-print" onclick="imprimirDocumento()">Imprimir</button>
+    <button type="button" class="action btn-clear" onclick="limpiarTodo()">Limpiar todo</button>
   </div>
 </div>
 
-<!-- Área imprimible -->
-<div id="printArea">
+<!-- Área imprimible. Se mantiene renderizable para evitar PDF en blanco. -->
+<div id="printArea" aria-hidden="true">
   <div class="doc-header">
     <div class="biz-name" id="p-bizName"></div>
+    <div class="biz-main-tag" id="p-bizMainTag"></div>
     <div class="biz-tag" id="p-bizTag"></div>
     <div class="biz-info" id="p-bizAddress"></div>
     <div class="biz-info" id="p-bizPhone"></div>
   </div>
 
-  <div class="doc-title">COTIZACIÓN <span id="p-quoteNumber"></span></div>
+  <div class="doc-title" id="p-quoteTitle"></div>
 
   <div class="doc-meta">
-    <div><b>Cliente:</b> <span id="p-clientName"></span></div>
-    <div><b>Vehículo/Referencia:</b> <span id="p-vehicleInfo"></span></div>
-    <div><b>Fecha:</b> <span id="p-quoteDate"></span></div>
+    <div id="p-clientRow"><b>CLIENTE:</b> <span id="p-clientName"></span></div>
+    <div id="p-vehicleRow"><b>VEHICULO:</b> <span id="p-vehicleInfo"></span></div>
+    <div id="p-dateRow"><b>FECHA:</b> <span id="p-quoteDate"></span></div>
   </div>
 
+  <div class="doc-job-title" id="p-jobTitle"></div>
+
   <div id="p-workSection">
-    <div class="doc-section-title">Trabajos a realizar</div>
-    <table class="doc-table">
-      <thead><tr><th>Descripción</th><th style="width:110px;">Precio</th></tr></thead>
-      <tbody id="p-workTable"></tbody>
-    </table>
-    <div class="doc-subtotal">Subtotal: RD$ <span id="p-workSubtotal"></span></div>
+    <div class="doc-list" id="p-workList"></div>
+    <div class="doc-total-row"><span class="label">Total</span><span class="dots"></span><span class="price">RD$ <span id="p-workSubtotal"></span></span></div>
   </div>
 
   <div id="p-partSection">
-    <div class="doc-section-title">Piezas</div>
-    <table class="doc-table">
-      <thead><tr><th>Descripción</th><th style="width:110px;">Precio</th></tr></thead>
-      <tbody id="p-partTable"></tbody>
-    </table>
-    <div class="doc-subtotal">Subtotal: RD$ <span id="p-partSubtotal"></span></div>
+    <div class="doc-section-title">Piezas:</div>
+    <div class="doc-list" id="p-partList"></div>
+    <div class="doc-total-row"><span class="label">Total</span><span class="dots"></span><span class="price">RD$ <span id="p-partSubtotal"></span></span></div>
   </div>
 
-  <div class="doc-total">TOTAL GENERAL: RD$ <span id="p-grandTotal"></span></div>
+  <div class="doc-total-row" id="p-grandTotalLine">
+    <span class="label" id="p-grandTotalLabel"></span><span class="dots"></span><span class="price">RD$ <span id="p-grandTotal"></span></span>
+  </div>
 
   <div class="doc-footer">
-    <div class="line"></div>
-    <div id="p-ownerName"></div>
-    <div id="p-ownerRole"></div>
+    <div class="owner" id="p-ownerName"></div>
+    <div class="role" id="p-ownerRole"></div>
   </div>
 </div>
 
 <script>
-function crearFila(containerId, tipo){
-  const container = document.getElementById(containerId);
+function byId(id){
+  return document.getElementById(id);
+}
+
+function valor(id){
+  const el = byId(id);
+  return el ? el.value.trim() : '';
+}
+
+function escaparHTML(texto){
+  return String(texto || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function normalizarNumero(valorEntrada){
+  const texto = String(valorEntrada || '').trim();
+  if(!texto) return 0;
+
+  // Soporta entradas como 60000, 60,000.00, 60.000,00 y 60000.50.
+  let limpio = texto.replace(/[^0-9,.-]/g, '');
+  const tieneComa = limpio.includes(',');
+  const tienePunto = limpio.includes('.');
+
+  if(tieneComa && tienePunto){
+    const ultimaComa = limpio.lastIndexOf(',');
+    const ultimoPunto = limpio.lastIndexOf('.');
+    if(ultimaComa > ultimoPunto){
+      limpio = limpio.replace(/\./g, '').replace(',', '.');
+    }else{
+      limpio = limpio.replace(/,/g, '');
+    }
+  }else if(tieneComa && !tienePunto){
+    const partes = limpio.split(',');
+    if(partes.length === 2 && partes[1].length <= 2){
+      limpio = partes[0].replace(/,/g, '') + '.' + partes[1];
+    }else{
+      limpio = limpio.replace(/,/g, '');
+    }
+  }else if(tienePunto && !tieneComa){
+    const partes = limpio.split('.');
+    const ultimoGrupo = partes[partes.length - 1];
+    if(partes.length > 2 || ultimoGrupo.length === 3){
+      limpio = limpio.replace(/\./g, '');
+    }
+  }
+
+  const numero = parseFloat(limpio);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function fmt(v){
+  return (Number(v) || 0).toLocaleString('en-US', {
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  });
+}
+
+function crearFila(containerId){
+  const container = byId(containerId);
   const row = document.createElement('div');
   row.className = 'item-row';
   row.innerHTML = `
     <input type="text" placeholder="Descripción" class="desc-input">
-    <input type="number" placeholder="Precio" class="price-input" step="0.01">
-    <button class="del-btn" title="Eliminar">✕</button>
+    <input type="text" inputmode="decimal" placeholder="Precio" class="price-input">
+    <button type="button" class="del-btn" title="Eliminar">x</button>
   `;
   container.appendChild(row);
 
@@ -398,9 +665,9 @@ function crearFila(containerId, tipo){
 
   function checkAutoAdd(){
     const rows = container.querySelectorAll('.item-row');
-    const isLast = row === rows[rows.length-1];
+    const isLast = row === rows[rows.length - 1];
     if(isLast && descInput.value.trim() !== '' && priceInput.value.trim() !== ''){
-      crearFila(containerId, tipo);
+      crearFila(containerId);
     }
     calcularTotales();
   }
@@ -410,117 +677,203 @@ function crearFila(containerId, tipo){
   delBtn.addEventListener('click', () => {
     row.remove();
     if(container.querySelectorAll('.item-row').length === 0){
-      crearFila(containerId, tipo);
+      crearFila(containerId);
     }
     calcularTotales();
   });
 }
 
+function sumarItems(containerId){
+  let total = 0;
+  document.querySelectorAll('#' + containerId + ' .item-row').forEach(row => {
+    total += normalizarNumero(row.querySelector('.price-input').value);
+  });
+  return total;
+}
+
 function calcularTotales(){
-  let workTotal = 0;
-  document.querySelectorAll('#workItems .item-row').forEach(row=>{
-    const p = parseFloat(row.querySelector('.price-input').value) || 0;
-    workTotal += p;
-  });
-  let partTotal = 0;
-  document.querySelectorAll('#partItems .item-row').forEach(row=>{
-    const p = parseFloat(row.querySelector('.price-input').value) || 0;
-    partTotal += p;
-  });
-  document.getElementById('workSubtotal').textContent = workTotal.toFixed(2);
-  document.getElementById('partSubtotal').textContent = partTotal.toFixed(2);
-  document.getElementById('grandTotal').textContent = (workTotal+partTotal).toFixed(2);
+  const workTotal = sumarItems('workItems');
+  const partTotal = sumarItems('partItems');
+  byId('workSubtotal').textContent = fmt(workTotal);
+  byId('partSubtotal').textContent = fmt(partTotal);
+  byId('grandTotal').textContent = fmt(workTotal + partTotal);
 }
 
-function fmt(v){
-  return (parseFloat(v)||0).toLocaleString('es-DO', {minimumFractionDigits:2, maximumFractionDigits:2});
+function construirLista(containerId){
+  let html = '';
+  let total = 0;
+  let count = 0;
+
+  document.querySelectorAll('#' + containerId + ' .item-row').forEach(row => {
+    const desc = row.querySelector('.desc-input').value.trim();
+    const price = normalizarNumero(row.querySelector('.price-input').value);
+
+    if(desc !== ''){
+      count++;
+      total += price;
+      html += `<div class="doc-list-row">
+        <span class="num">${count}.</span>
+        <span class="desc">${escaparHTML(desc)}</span>
+        <span class="dots"></span>
+        <span class="price">RD$ ${fmt(price)}</span>
+      </div>`;
+    }
+  });
+
+  return { html, total, count };
 }
 
-function generarPDF(){
-  // Datos del negocio
-  document.getElementById('p-bizName').textContent = document.getElementById('bizName').value || 'Nombre del Negocio';
-  document.getElementById('p-bizTag').textContent = document.getElementById('bizTag').value;
-  document.getElementById('p-bizAddress').textContent = document.getElementById('bizAddress').value;
-  document.getElementById('p-bizPhone').textContent = document.getElementById('bizPhone').value ? 'Tel: ' + document.getElementById('bizPhone').value : '';
+function prepararDocumento(){
+  const titulo = (valor('quoteTitle') || 'COTIZACIÓN').toUpperCase();
+  const numero = valor('quoteNumber');
+  const fecha = valor('quoteDate');
 
-  document.getElementById('p-quoteNumber').textContent = document.getElementById('quoteNumber').value ? '#' + document.getElementById('quoteNumber').value : '';
-  document.getElementById('p-clientName').textContent = document.getElementById('clientName').value;
-  document.getElementById('p-vehicleInfo').textContent = document.getElementById('vehicleInfo').value;
-  document.getElementById('p-quoteDate').textContent = document.getElementById('quoteDate').value;
+  byId('p-bizName').textContent = valor('bizName').toUpperCase();
+  byId('p-bizMainTag').textContent = valor('bizMainTag').toUpperCase();
+  byId('p-bizTag').textContent = valor('bizTag').toUpperCase();
+  byId('p-bizAddress').textContent = valor('bizAddress').toUpperCase();
+  byId('p-bizPhone').textContent = valor('bizPhone') ? 'TELEFONO ' + valor('bizPhone') : '';
 
-  // Trabajos
-  const workBody = document.getElementById('p-workTable');
-  workBody.innerHTML = '';
-  let workTotal = 0;
-  let anyWork = false;
-  document.querySelectorAll('#workItems .item-row').forEach(row=>{
-    const desc = row.querySelector('.desc-input').value.trim();
-    const price = parseFloat(row.querySelector('.price-input').value) || 0;
-    if(desc !== ''){
-      anyWork = true;
-      workTotal += price;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${desc}</td><td class="price">RD$ ${fmt(price)}</td>`;
-      workBody.appendChild(tr);
+  byId('p-quoteTitle').textContent = titulo + (numero ? ' No. ' + numero : '');
+  byId('p-clientName').textContent = valor('clientName').toUpperCase();
+  byId('p-vehicleInfo').textContent = valor('vehicleInfo').toUpperCase();
+  byId('p-quoteDate').textContent = fecha;
+  byId('p-dateRow').style.display = fecha ? 'block' : 'none';
+
+  byId('p-jobTitle').textContent = valor('jobTitle').toUpperCase();
+
+  const work = construirLista('workItems');
+  byId('p-workList').innerHTML = work.html;
+  byId('p-workSection').style.display = work.count > 0 ? 'block' : 'none';
+  byId('p-workSubtotal').textContent = fmt(work.total);
+
+  const part = construirLista('partItems');
+  byId('p-partList').innerHTML = part.html;
+  byId('p-partSection').style.display = part.count > 0 ? 'block' : 'none';
+  byId('p-partSubtotal').textContent = fmt(part.total);
+
+  const grandTotal = work.total + part.total;
+  const etiquetaTotal = (part.count > 0 && work.count > 0)
+    ? 'TOTAL EN MATERIALES, PIEZAS Y MANO DE OBRA'
+    : 'TOTAL';
+
+  byId('p-grandTotalLine').style.display = (work.count + part.count) > 0 ? 'flex' : 'none';
+  byId('p-grandTotalLabel').textContent = etiquetaTotal;
+  byId('p-grandTotal').textContent = fmt(grandTotal);
+
+  byId('p-ownerName').textContent = valor('ownerName').toUpperCase();
+  byId('p-ownerRole').textContent = valor('ownerRole').toUpperCase() + '.-';
+}
+
+function esperar(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function esperarRenderizado(){
+  if(document.fonts && document.fonts.ready){
+    try{ await document.fonts.ready; }catch(e){}
+  }
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+async function generarPDF(){
+  const btn = document.querySelector('.btn-print');
+  const originalText = btn.textContent;
+  btn.textContent = 'Generando PDF...';
+  btn.disabled = true;
+
+  try{
+    prepararDocumento();
+
+    if(typeof html2pdf === 'undefined'){
+      throw new Error('No se pudo cargar html2pdf.js. Revisa la conexión a internet o usa el botón Imprimir.');
     }
-  });
-  document.getElementById('p-workSection').style.display = anyWork ? 'block' : 'none';
-  document.getElementById('p-workSubtotal').textContent = fmt(workTotal);
 
-  // Piezas
-  const partBody = document.getElementById('p-partTable');
-  partBody.innerHTML = '';
-  let partTotal = 0;
-  let anyPart = false;
-  document.querySelectorAll('#partItems .item-row').forEach(row=>{
-    const desc = row.querySelector('.desc-input').value.trim();
-    const price = parseFloat(row.querySelector('.price-input').value) || 0;
-    if(desc !== ''){
-      anyPart = true;
-      partTotal += price;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${desc}</td><td class="price">RD$ ${fmt(price)}</td>`;
-      partBody.appendChild(tr);
-    }
-  });
-  document.getElementById('p-partSection').style.display = anyPart ? 'block' : 'none';
-  document.getElementById('p-partSubtotal').textContent = fmt(partTotal);
+    document.body.classList.add('generating-pdf');
+    await esperarRenderizado();
+    await esperar(100);
 
-  document.getElementById('p-grandTotal').textContent = fmt(workTotal + partTotal);
+    const titulo = (valor('quoteTitle') || 'COTIZACION').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const cliente = (valor('clientName') || 'documento').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const nombreArchivo = (titulo + '_' + cliente)
+      .replace(/[^a-zA-Z0-9_-]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '') + '.pdf';
 
-  document.getElementById('p-ownerName').textContent = document.getElementById('ownerName').value;
-  document.getElementById('p-ownerRole').textContent = document.getElementById('ownerRole').value;
+    const opciones = {
+      margin: 0,
+      filename: nombreArchivo,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 816,
+        windowHeight: 1056
+      },
+      jsPDF: { unit: 'pt', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
 
-  window.print();
+    await html2pdf().set(opciones).from(byId('printArea')).save();
+  }catch(error){
+    alert(error.message || 'Ocurrió un error generando el PDF. Intenta de nuevo.');
+  }finally{
+    document.body.classList.remove('generating-pdf');
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+function imprimirDocumento(){
+  prepararDocumento();
+  document.body.classList.add('generating-pdf');
+  setTimeout(() => {
+    window.print();
+  }, 150);
 }
 
 function limpiarTodo(){
-  if(!confirm('¿Seguro que deseas limpiar todos los campos? (Los datos del negocio y la firma no se borrarán)')) return;
-  document.querySelectorAll('input[type="text"]:not([readonly]), input[type="number"]:not([readonly])').forEach(i => i.value = '');
-  document.getElementById('workItems').innerHTML = '';
-  document.getElementById('partItems').innerHTML = '';
-  crearFila('workItems', 'trabajo');
-  crearFila('partItems', 'pieza');
+  if(!confirm('¿Seguro que deseas limpiar todos los campos? Los datos del negocio y la firma no se borrarán.')) return;
+
+  document.querySelectorAll('input[type="text"]:not([readonly])').forEach(i => {
+    if(i.id !== 'quoteTitle') i.value = '';
+  });
+
+  byId('quoteTitle').value = 'COTIZACIÓN';
+  byId('workItems').innerHTML = '';
+  byId('partItems').innerHTML = '';
+  crearFila('workItems');
+  crearFila('partItems');
   calcularTotales();
-  const hoy = new Date();
-  document.getElementById('quoteDate').value = hoy.toLocaleDateString('es-DO');
+  prepararDocumento();
 }
 
+window.addEventListener('beforeprint', () => {
+  prepararDocumento();
+  document.body.classList.add('generating-pdf');
+});
+
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('generating-pdf');
+});
+
 // ==== Datos fijos del negocio (no editables) ====
-document.getElementById('bizName').value = 'Almonte Auto Pintura';
-document.getElementById('bizTag').value = 'Desabolladura y Pintura / Reparación e Instalación de Aire Acondicionado';
-document.getElementById('bizAddress').value = 'Carretera La Isabela #5, Pantoja, Sto. Dgo. Oeste';
-document.getElementById('bizPhone').value = '829-250-2225';
-document.getElementById('ownerName').value = 'Simón Almonte';
-document.getElementById('ownerRole').value = 'Propietario';
+byId('bizName').value = 'Almonte Auto Pintura';
+byId('bizMainTag').value = 'Desabolladura y Pintura';
+byId('bizTag').value = 'Reparacion e Instalacion de Aire Acondicionado';
+byId('bizAddress').value = 'Carretera La Isabela #5 Pantoja, Sto. Dgo. Oeste';
+byId('bizPhone').value = '829-250-2225';
+byId('ownerName').value = 'Simon Almonte';
+byId('ownerRole').value = 'Propietario';
 
 // Inicializar
-crearFila('workItems', 'trabajo');
-crearFila('partItems', 'pieza');
-
-// Fecha por defecto
-const hoy = new Date();
-document.getElementById('quoteDate').value = hoy.toLocaleDateString('es-DO');
+crearFila('workItems');
+crearFila('partItems');
+calcularTotales();
+prepararDocumento();
 </script>
 
 </body>
