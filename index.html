@@ -195,14 +195,16 @@
     z-index:-1;
     opacity:0;
     pointer-events:none;
-    width:8.5in;
-    min-height:11in;
-    padding:0.48in 0.58in 0.38in 0.58in;
+    width:7.4in;
+    min-height:0;
+    padding:0;
     background:#fff;
     color:#000;
     font-family:Arial, Helvetica, sans-serif;
     line-height:1.12;
-    overflow:hidden;
+    overflow:visible;
+    page-break-after:avoid;
+    break-after:avoid-page;
   }
 
   body.print-mode{
@@ -221,11 +223,13 @@
     z-index:9999;
     opacity:1;
     pointer-events:auto;
+    width:7.4in;
+    min-height:0;
   }
 
   .doc-header{
     text-align:center;
-    margin-bottom:0.24in;
+    margin-bottom:0.18in;
   }
 
   .doc-header .biz-name{
@@ -272,7 +276,7 @@
     font-size:12pt;
     letter-spacing:.2pt;
     text-decoration:underline;
-    margin:0 0 0.20in 0;
+    margin:0 0 0.16in 0;
     text-transform:uppercase;
   }
 
@@ -382,7 +386,7 @@
   }
 
   .doc-footer{
-    margin-top:0.34in;
+    margin-top:0.24in;
     width:2.75in;
     margin-left:auto;
     margin-right:0.25in;
@@ -409,22 +413,23 @@
 
   @page{
     size:letter;
-    margin:0;
+    margin:0.42in 0.55in 0.38in 0.55in;
   }
 
   @media print{
     @page{
       size:letter;
-      margin:0;
+      margin:0.42in 0.55in 0.38in 0.55in;
     }
 
     html, body{
-      width:8.5in;
-      height:11in;
+      width:auto !important;
+      height:auto !important;
+      min-height:0 !important;
       margin:0 !important;
       padding:0 !important;
       background:#fff !important;
-      overflow:hidden !important;
+      overflow:visible !important;
     }
 
     .container,
@@ -441,11 +446,16 @@
       z-index:auto !important;
       opacity:1 !important;
       pointer-events:auto !important;
-      width:8.5in !important;
-      min-height:11in !important;
-      padding:0.48in 0.58in 0.38in 0.58in !important;
+      width:100% !important;
+      max-width:7.4in !important;
+      height:auto !important;
+      min-height:0 !important;
+      padding:0 !important;
+      margin:0 auto !important;
       background:#fff !important;
-      overflow:hidden !important;
+      overflow:visible !important;
+      page-break-after:avoid !important;
+      break-after:avoid-page !important;
       -webkit-print-color-adjust:exact;
       print-color-adjust:exact;
     }
