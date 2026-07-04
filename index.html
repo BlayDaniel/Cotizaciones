@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Generador de Cotizaciones - Almonte Auto Pintura</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --primary:#1a3c6e;
@@ -181,23 +180,13 @@
     cursor:pointer;
   }
 
-  button.action:disabled{
-    opacity:.65;
-    cursor:not-allowed;
-  }
-
-  .btn-print{background:var(--primary);color:#fff;}
-  .btn-print:hover{background:var(--primary-dark);}
   .btn-browser-print{background:#34495e;color:#fff;}
   .btn-browser-print:hover{background:#253646;}
   .btn-clear{background:#eceff3;color:var(--text);}
   .btn-clear:hover{background:#dde2e9;}
 
   /* ================= Documento imprimible =================
-     Importante: NO se usa display:none en #printArea.
-     html2canvas/html2pdf puede generar páginas en blanco si el nodo origen
-     está oculto con display:none. Se mantiene fuera de pantalla y se muestra
-     solo mientras se genera/imprime.
+     Formato fijo Letter: 8.5 x 11 pulgadas.
   */
   #printArea{
     position:fixed;
@@ -206,25 +195,26 @@
     z-index:-1;
     opacity:0;
     pointer-events:none;
-    width:816px;
-    min-height:1056px;
-    padding:145px 114px 70px 114px;
+    width:8.5in;
+    min-height:11in;
+    padding:0.48in 0.58in 0.38in 0.58in;
     background:#fff;
     color:#000;
     font-family:Arial, Helvetica, sans-serif;
-    line-height:1.16;
+    line-height:1.12;
+    overflow:hidden;
   }
 
-  body.generating-pdf{
+  body.print-mode{
     background:#fff;
     padding:0;
   }
 
-  body.generating-pdf .container{
+  body.print-mode .container{
     display:none !important;
   }
 
-  body.generating-pdf #printArea{
+  body.print-mode #printArea{
     position:absolute;
     left:0;
     top:0;
@@ -235,61 +225,65 @@
 
   .doc-header{
     text-align:center;
-    margin-bottom:43px;
+    margin-bottom:0.24in;
   }
 
   .doc-header .biz-name{
-    font-family:'Stencil', 'Arial Black', Impact, sans-serif;
-    font-size:42px;
+    font-family:'Arial Black', Impact, Arial, sans-serif;
+    font-size:18pt;
     font-weight:900;
-    letter-spacing:2px;
+    letter-spacing:.7pt;
     line-height:1;
-    margin-bottom:8px;
+    margin-bottom:3pt;
     text-transform:uppercase;
+    white-space:nowrap;
   }
 
   .doc-header .biz-main-tag{
     font-family:Georgia, 'Times New Roman', serif;
-    font-size:25px;
+    font-size:12pt;
     font-weight:700;
-    line-height:1.05;
+    line-height:1.03;
     text-transform:uppercase;
+    white-space:nowrap;
   }
 
   .doc-header .biz-tag{
     font-family:Georgia, 'Times New Roman', serif;
-    font-size:19px;
+    font-size:10pt;
     font-weight:700;
-    line-height:1.1;
+    line-height:1.08;
     text-transform:uppercase;
+    white-space:nowrap;
   }
 
   .doc-header .biz-info{
     font-family:Georgia, 'Times New Roman', serif;
-    font-size:18px;
+    font-size:10pt;
     font-weight:700;
-    line-height:1.1;
+    line-height:1.08;
     text-transform:uppercase;
+    white-space:nowrap;
   }
 
   .doc-title{
     text-align:center;
     font-weight:700;
-    font-size:23px;
-    letter-spacing:.3px;
+    font-size:12pt;
+    letter-spacing:.2pt;
     text-decoration:underline;
-    margin:0 0 24px 0;
+    margin:0 0 0.20in 0;
     text-transform:uppercase;
   }
 
   .doc-meta{
     font-family:Georgia, 'Times New Roman', serif;
-    font-size:22px;
-    margin-bottom:22px;
+    font-size:10pt;
+    margin-bottom:0.13in;
   }
 
   .doc-meta div{
-    margin-bottom:20px;
+    margin-bottom:0.07in;
   }
 
   .doc-meta b{
@@ -301,15 +295,15 @@
   }
 
   .doc-job-title{
-    font-size:19px;
+    font-size:12pt;
     font-weight:700;
-    margin:4px 0 35px 0;
+    margin:0 0 0.16in 0;
     text-transform:uppercase;
   }
 
   .doc-list{
-    font-size:20px;
-    margin:0 0 25px 0;
+    font-size:10pt;
+    margin:0 0 0.12in 0;
     padding:0;
   }
 
@@ -318,81 +312,97 @@
     display:flex;
     align-items:baseline;
     width:100%;
-    margin-bottom:8px;
+    margin-bottom:0.045in;
     color:#000;
+    break-inside:avoid;
+    page-break-inside:avoid;
   }
 
   .doc-list-row .num{
-    flex:0 0 36px;
+    flex:0 0 18pt;
     text-align:right;
-    margin-right:14px;
+    margin-right:5pt;
   }
 
   .doc-list-row .desc{
     flex:0 1 auto;
     min-width:0;
-    overflow-wrap:anywhere;
+    max-width:67%;
+    overflow-wrap:break-word;
+    word-break:normal;
   }
 
   .doc-list-row .dots,
   .doc-total-row .dots{
     flex:1 1 auto;
-    border-bottom:3px dotted #000;
-    margin:0 9px 3px 9px;
-    min-width:18px;
+    border-bottom:1.4pt dotted #000;
+    margin:0 5pt 2pt 5pt;
+    min-width:18pt;
     height:0;
   }
 
   .doc-list-row .price{
     flex:0 0 auto;
     white-space:nowrap;
+    text-align:right;
   }
 
   .doc-total-row{
-    font-size:20px;
+    font-size:10pt;
     font-weight:700;
-    margin:30px 0 34px 0;
+    margin:0.10in 0 0.14in 0;
   }
 
   .doc-total-row .label{
-    flex:0 0 auto;
+    flex:0 1 auto;
+    min-width:0;
+    white-space:nowrap;
   }
 
   .doc-total-row .price{
     flex:0 0 auto;
     white-space:nowrap;
+    text-align:right;
   }
 
   .doc-section-title{
-    font-size:20px;
+    font-size:12pt;
     font-weight:700;
-    margin:0 0 7px 0;
+    margin:0 0 0.08in 0;
   }
 
   #p-grandTotalLine{
-    margin-top:6px;
+    margin-top:0.05in;
+    font-size:10pt;
+  }
+
+  #p-grandTotalLine .label{
+    max-width:72%;
+    white-space:normal;
   }
 
   .doc-footer{
-    margin-top:70px;
-    width:260px;
+    margin-top:0.34in;
+    width:2.75in;
     margin-left:auto;
-    margin-right:22px;
+    margin-right:0.25in;
     text-align:center;
     color:#000;
+    break-inside:avoid;
+    page-break-inside:avoid;
   }
 
   .doc-footer .owner{
     font-family:Arial, Helvetica, sans-serif;
-    font-size:24px;
+    font-size:12pt;
     font-weight:400;
     text-transform:uppercase;
-    margin-bottom:4px;
+    margin-bottom:2pt;
   }
 
   .doc-footer .role{
     font-family:Georgia, 'Times New Roman', serif;
-    font-size:16px;
+    font-size:10pt;
     font-weight:400;
     text-transform:uppercase;
   }
@@ -403,40 +413,45 @@
   }
 
   @media print{
+    @page{
+      size:letter;
+      margin:0;
+    }
+
     html, body{
-      width:100%;
-      min-height:100%;
+      width:8.5in;
+      height:11in;
       margin:0 !important;
       padding:0 !important;
       background:#fff !important;
+      overflow:hidden !important;
     }
 
-    body *{
-      visibility:hidden !important;
-    }
-
-    #printArea,
-    #printArea *{
-      visibility:visible !important;
+    .container,
+    .no-print{
+      display:none !important;
     }
 
     #printArea{
-      position:absolute !important;
-      left:0 !important;
-      top:0 !important;
-      z-index:9999 !important;
+      display:block !important;
+      visibility:visible !important;
+      position:static !important;
+      left:auto !important;
+      top:auto !important;
+      z-index:auto !important;
       opacity:1 !important;
       pointer-events:auto !important;
-      width:100% !important;
-      min-height:100vh !important;
-      padding:145px 114px 70px 114px !important;
+      width:8.5in !important;
+      min-height:11in !important;
+      padding:0.48in 0.58in 0.38in 0.58in !important;
       background:#fff !important;
+      overflow:hidden !important;
       -webkit-print-color-adjust:exact;
       print-color-adjust:exact;
     }
 
-    .no-print{
-      display:none !important;
+    #printArea *{
+      visibility:visible !important;
     }
   }
 
@@ -451,7 +466,7 @@
 
 <div class="container no-print">
   <h1>Generador de Cotizaciones</h1>
-  <div class="subtitle">Completa los campos y genera el documento</div>
+  <div class="subtitle">Completa los campos e imprime el documento</div>
 
   <div class="card">
     <h2>Datos del negocio <span class="locked-tag">Fijo</span></h2>
@@ -493,7 +508,7 @@
     </div>
     <div class="grid2">
       <div>
-        <label>Fecha (opcional, solo se imprime si se llena)</label>
+        <label>Fecha</label>
         <input type="text" id="quoteDate" placeholder="Ej: 03/07/2026">
       </div>
       <div>
@@ -508,7 +523,7 @@
       </div>
       <div>
         <label>Descripción del trabajo</label>
-        <input type="text" id="jobTitle" placeholder="Ej: CAMBIO, CUADRE Y PINTURA DE PIEZAS">
+        <input type="text" id="jobTitle" value="CAMBIO, CUADRE Y PINTURA DE PIEZAS" placeholder="Ej: CAMBIO, CUADRE Y PINTURA DE PIEZAS">
       </div>
     </div>
   </div>
@@ -539,13 +554,12 @@
   </div>
 
   <div class="btn-row">
-    <button type="button" class="action btn-print" onclick="generarPDF()">Descargar PDF</button>
-    <button type="button" class="action btn-browser-print" onclick="imprimirDocumento()">Imprimir</button>
+    <button type="button" class="action btn-browser-print" onclick="imprimirDocumento()">Imprimir cotización</button>
     <button type="button" class="action btn-clear" onclick="limpiarTodo()">Limpiar todo</button>
   </div>
 </div>
 
-<!-- Área imprimible. Se mantiene renderizable para evitar PDF en blanco. -->
+<!-- Área imprimible -->
 <div id="printArea" aria-hidden="true">
   <div class="doc-header">
     <div class="biz-name" id="p-bizName"></div>
@@ -648,6 +662,20 @@ function fmt(v){
   });
 }
 
+function fechaHoy(){
+  const hoy = new Date();
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const yyyy = hoy.getFullYear();
+  return dd + '/' + mm + '/' + yyyy;
+}
+
+function llenarFechaSiVacia(){
+  if(!valor('quoteDate')){
+    byId('quoteDate').value = fechaHoy();
+  }
+}
+
 function crearFila(containerId){
   const container = byId(containerId);
   const row = document.createElement('div');
@@ -726,7 +754,7 @@ function construirLista(containerId){
 function prepararDocumento(){
   const titulo = (valor('quoteTitle') || 'COTIZACIÓN').toUpperCase();
   const numero = valor('quoteNumber');
-  const fecha = valor('quoteDate');
+  const fecha = valor('quoteDate') || fechaHoy();
 
   byId('p-bizName').textContent = valor('bizName').toUpperCase();
   byId('p-bizMainTag').textContent = valor('bizMainTag').toUpperCase();
@@ -738,7 +766,7 @@ function prepararDocumento(){
   byId('p-clientName').textContent = valor('clientName').toUpperCase();
   byId('p-vehicleInfo').textContent = valor('vehicleInfo').toUpperCase();
   byId('p-quoteDate').textContent = fecha;
-  byId('p-dateRow').style.display = fecha ? 'block' : 'none';
+  byId('p-dateRow').style.display = 'block';
 
   byId('p-jobTitle').textContent = valor('jobTitle').toUpperCase();
 
@@ -765,71 +793,10 @@ function prepararDocumento(){
   byId('p-ownerRole').textContent = valor('ownerRole').toUpperCase() + '.-';
 }
 
-function esperar(ms){
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function esperarRenderizado(){
-  if(document.fonts && document.fonts.ready){
-    try{ await document.fonts.ready; }catch(e){}
-  }
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-}
-
-async function generarPDF(){
-  const btn = document.querySelector('.btn-print');
-  const originalText = btn.textContent;
-  btn.textContent = 'Generando PDF...';
-  btn.disabled = true;
-
-  try{
-    prepararDocumento();
-
-    if(typeof html2pdf === 'undefined'){
-      throw new Error('No se pudo cargar html2pdf.js. Revisa la conexión a internet o usa el botón Imprimir.');
-    }
-
-    document.body.classList.add('generating-pdf');
-    await esperarRenderizado();
-    await esperar(100);
-
-    const titulo = (valor('quoteTitle') || 'COTIZACION').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const cliente = (valor('clientName') || 'documento').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const nombreArchivo = (titulo + '_' + cliente)
-      .replace(/[^a-zA-Z0-9_-]+/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_|_$/g, '') + '.pdf';
-
-    const opciones = {
-      margin: 0,
-      filename: nombreArchivo,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 816,
-        windowHeight: 1056
-      },
-      jsPDF: { unit: 'pt', format: 'letter', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
-    await html2pdf().set(opciones).from(byId('printArea')).save();
-  }catch(error){
-    alert(error.message || 'Ocurrió un error generando el PDF. Intenta de nuevo.');
-  }finally{
-    document.body.classList.remove('generating-pdf');
-    btn.textContent = originalText;
-    btn.disabled = false;
-  }
-}
-
 function imprimirDocumento(){
+  llenarFechaSiVacia();
   prepararDocumento();
-  document.body.classList.add('generating-pdf');
+  document.body.classList.add('print-mode');
   setTimeout(() => {
     window.print();
   }, 150);
@@ -843,6 +810,8 @@ function limpiarTodo(){
   });
 
   byId('quoteTitle').value = 'COTIZACIÓN';
+  byId('jobTitle').value = 'CAMBIO, CUADRE Y PINTURA DE PIEZAS';
+  byId('quoteDate').value = fechaHoy();
   byId('workItems').innerHTML = '';
   byId('partItems').innerHTML = '';
   crearFila('workItems');
@@ -852,12 +821,13 @@ function limpiarTodo(){
 }
 
 window.addEventListener('beforeprint', () => {
+  llenarFechaSiVacia();
   prepararDocumento();
-  document.body.classList.add('generating-pdf');
+  document.body.classList.add('print-mode');
 });
 
 window.addEventListener('afterprint', () => {
-  document.body.classList.remove('generating-pdf');
+  document.body.classList.remove('print-mode');
 });
 
 // ==== Datos fijos del negocio (no editables) ====
@@ -870,6 +840,8 @@ byId('ownerName').value = 'Simon Almonte';
 byId('ownerRole').value = 'Propietario';
 
 // Inicializar
+byId('quoteDate').value = fechaHoy();
+byId('jobTitle').value = byId('jobTitle').value || 'CAMBIO, CUADRE Y PINTURA DE PIEZAS';
 crearFila('workItems');
 crearFila('partItems');
 calcularTotales();
